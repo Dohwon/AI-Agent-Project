@@ -1,0 +1,8 @@
+query,expected_case,expected_function,expected_available_function,expected_prepared_question
+안녕,1,,,
+청정 시작해줘,2,고정 청정,start,
+홈 잠금 해줘,4,,,
+나무엑쓰 자기소개 해줘,3,,,35
+그래 해줘,1,,,
+고마워 잘 자,1,,,
+그만 따라와,2,따라 와,stop,
