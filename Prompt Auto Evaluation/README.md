@@ -1,15 +1,16 @@
+- 251212 모델 순서 상관없이, 동일 모델 비교 가능하도록 개선
+
 # 순서
 
-- 환경: Window + VS Code
+## 환경
 
+- Window + VS Code
 - 폴더 전체 내 로컬에 다운로드
 	- 폴더 내 파일 수정
 		- **judge_prompt.txt**: 비교할 프롬프트
 		- **inference_prompt.txt**: 원본 프롬프트
 		- **sample_tests.csv**: 테스트할 문장(user_input)&기대결과 기록 
-
 - VS Code 터미널에서 가상환경 생성:
-
    ```
    python -m venv .venv
    .\.venv\Scripts\activate
@@ -23,35 +24,67 @@
 	  `cd {폴더}`
 	  `.\.venv\Scripts\Activate.ps1`
 
-- 환경변수 파일 만들기:
 
+## 환경변수 세팅 (모델 선정)
+
+- 환경변수 파일 만들기:
 ```
 copy .env.template .env
 ```
+* .env 열어서 (`notepad .env`) **API 키**와 **모델명**, **비용**, **System prompt** 경로 세팅:
+```
+# 어떤 모델을 쓸지, 순서를 명시
+MODELS=A,B,C       # A,B 만 써도 됨
 
-* .env 열어서 (`notepad .env`) **API 키**와 **모델명** 세팅:
+# 공통: 비용(선택)
+MODEL_A_INPUT_COST_PER_1K=0.15
+MODEL_A_OUTPUT_COST_PER_1K=0.6
+MODEL_B_INPUT_COST_PER_1K=0.0
+MODEL_B_OUTPUT_COST_PER_1K=0.3
+MODEL_C_INPUT_COST_PER_1K=
+MODEL_C_OUTPUT_COST_PER_1K=
+
+# A: OpenAI 호환 (GPT-4o-mini)
+MODEL_A_VENDOR=openai
+MODEL_A_BASE_URL=https://api.openai.com
+MODEL_A_API_KEY=sk-...
+MODEL_A_MODEL=gpt-4o-mini
+MODEL_A_SYS_PROMPT=.\model_a_prompt.txt   # ← 파일 경로
+
+# B: Gemini
+MODEL_B_VENDOR=gemini
+MODEL_B_BASE_URL=https://generativelanguage.googleapis.com
+MODEL_B_API_KEY=AIza...
+MODEL_B_MODEL=gemini-2.5-flash
+MODEL_B_SYS_PROMPT=.\model_b_prompt.txt
+
+# C: Upstage (Solar)
+MODEL_C_VENDOR=upstage
+MODEL_C_BASE_URL=https://api.upstage.ai/v1
+MODEL_C_API_KEY=upstage-...
+MODEL_C_MODEL=solar-pro-2
+MODEL_C_SYS_PROMPT=.\model_c_prompt.txt
+
+# Judge(그대로)
+JUDGE_BASE_URL=https://api.openai.com
+JUDGE_API_KEY=sk-...
+JUDGE_MODEL=gpt-5.1
 
 ```
-A 모델 -> 원본 모델 (inference_prompt.txt가 쓰일 모델)
-MODEL_A_BASE_URL=https://api.openai.com (이후 주소는 py에서 생성하므로 여기까지)
-MODEL_A_API_KEY=sk-... -> 본인(회사) 모델 API key
-MODEL_A_MODEL=gpt-4o-mini -> openai 제공하는 모델명
+- 비교하려는 모델에 따라 A/B/C 모델을 설정해줘야 함.
+- 3개 비교 시 라운드로빈(pairrwise 토너먼트)로 평가가 진행됨
+- template은 OpenAI/Gemini/Upstage로 구성되어 있으니 적절히 선택 
 
-B 모델 -> 비교할 모델
-이하 동일
 
-Judge -> Open AI 추천(JSON 보장때문에) 
-이하 동일
-
-MAX_CONCURRENCY -> 동시 요청 조절 (과하면 rate limit)
-TIMEOUT -> 각 HTTP 요청 타임아웃 (느린 모델, 네트워크면 늘리기)
+- 실행: 3번째 모델 쓰고 싶으면 .env에 3번째 모델 추가! 
+- 테스트 돌릴 파일 csv로 준비 + 파일명 다를경우 아래 `sample_test.csv` 수정
+```powershell
+python judge_runner.py --tests sample_tests.csv --judge-prompt judge_prompt.txt --out out
 ```
-
-- 실행: `python judge_runner.py --tests sample_tests.csv --sys-prompt inference_prompt.txt --judge-prompt judge_prompt.txt --out results`
 
 - 결과
-	- `results.jsonl`: 각 테스트 케이스별 raw 결과 + judge JSON
-	- `results.csv`: 요약(승자/신뢰도/케이스판정 등) 컬럼만 평탄화
+	- `results_YYMMDD.jsonl`: 각 테스트 케이스별 raw 결과 + judge JSON
+	- `results_YYMMDD.csv`: 요약(승자/신뢰도/케이스판정 등) 컬럼만 평탄화
 
 - 결과 열 해석
 	- `winner`: "A"|"B"|"tie"
@@ -59,8 +92,3 @@ TIMEOUT -> 각 HTTP 요청 타임아웃 (느린 모델, 네트워크면 늘리�
 	- `case_winner`: 케이스 분류 기준 승자
 	- `model_a_case` / `model_b_case`: Judge가 판독한 각 모델의 케이스
 	- `response_a` / `response_b`: 원 응답(디버깅 편리)
-
-
-
-## (25-11-04) 
-- 현재는 Case1의 분류만 평가하고 있어서 Case 2(function/available function), Case 3의 확장이 필요 코드는 짰는데 테스트 귀찮아서 나중에 ㅌㅌ 
